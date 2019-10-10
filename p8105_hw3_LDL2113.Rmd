@@ -8,31 +8,57 @@ output: github_document
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
-install.packages("devtools")
-devtools::install_github("p8105/p8105.datasets")
+
+knitr::opts_chunk$set(
+  fig.width = 6,
+  fig.asp = .6,
+  out.width = "90%"
+)
+
+theme_set(theme_bw() + theme(legend.position = "bottom"))
 ```
+
+
+## Problem 1
+
+*Read in instacart data*
 
 ```{r}
 library(p8105.datasets)
 data("instacart")
+instacart_data = instacart
 ```
 
-## R Markdown
+The dataset from Instacart reflects online grocery orders. The data contains `r ncol(instacart_data)` variables and `r nrow(instacart_data)` entries describing individual product orders. Each entry refers to a specific product ordered, assigned a product ID and description, and further lists the time of day of the overall grocery order in which that product was included, the number of days since a customer's prior grocery order, and categorizes the product by aisle and department.
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+*How many aisles are there, and which aisles are most items ordered from?*
 
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
-
-```{r cars}
-summary(cars)
+```{r}
+instacart_aisle = instacart_data %>%
+  select(aisle) %>%
+  count(aisle, name = "n_aisle") %>%
+  arrange(desc(n_aisle))
 ```
 
-## Including Plots
+There are `r nrow(instacart_aisle)` aisles. Most orders are from the "Fresh Vegetables" aisle, followed in popularity by the "Fresh Fruits" and "Packaged Vegetables Fruits" aisles.
 
-You can also embed plots, for example:
+*Make a plot that shows the number of items ordered in each aisle, limiting this to aisles with more than 10000 items ordered.*
 
-```{r pressure, echo=FALSE}
-plot(pressure)
+```{r}
+instacart_aisle_plot = instacart_aisle %>%
+  filter(n_aisle > 10000) %>%
+  mutate(
+    rank = rank(-n_aisle)
+  )
+
+ggplot(instacart_aisle_plot, aes(x = rank, y = n_aisle)) +
+    geom_point(aes(color = aisle)) +
+    labs(
+      title = "Popular Aisles",
+      x = "Aisle Popularity Ranking",
+      y = "Number of Orders",
+      caption = "Data from Instacart"
+    )
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+

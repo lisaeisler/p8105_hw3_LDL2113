@@ -61,4 +61,21 @@ ggplot(instacart_aisle_plot, aes(x = rank, y = n_aisle)) +
     )
 ```
 
+*Make a table showing the three most popular items in each of the aisles “baking ingredients”, “dog food care”, and “packaged vegetables fruits”. Include the number of times each item is ordered in your table.*
 
+```{r}
+popular_items = instacart_data %>%
+  select(aisle, product_name) %>%
+  filter(aisle == "baking ingredients" | aisle == "dog food care" | aisle == "packaged vegetables fruits") %>%
+  count(aisle, product_name, name = "n_product")
+  
+popular_items_table = popular_items %>%
+  group_by(aisle) %>%
+  mutate(
+    rank = order(order(n_product, decreasing=TRUE))) %>%
+  filter(rank < 4) %>%
+  arrange(aisle, desc(n_product))
+
+knitr::kable(
+  popular_items_table, caption = 'Most Popular Items By Aisle.')
+```

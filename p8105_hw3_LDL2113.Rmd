@@ -8,10 +8,11 @@ output: github_document
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
+library(ggridges)
 
 knitr::opts_chunk$set(
   fig.width = 6,
-  fig.asp = .6,
+  fig.asp = 1,
   out.width = "90%"
 )
 
@@ -108,3 +109,90 @@ knitr::kable(
 ```
 
 
+##Problem 2
+
+*Read in BRFSS data*
+  
+```{r}
+library(p8105.datasets)
+data("brfss_smart2010")
+```
+
+*First, do some data cleaning*
+
+```{r}
+brfss_smart2010_data = brfss_smart2010 %>% 
+  janitor::clean_names() %>% 
+  filter(topic == "Overall Health") %>%
+  filter(response == "Poor" | response == "Fair" | response == "Good" | response == "Very good" | response == "Excellent") %>%
+  mutate(
+    response_factor_ordered = factor(response, ordered = TRUE, levels = c("Poor", "Fair", "Good", "Very good", "Excellent"))
+  )
+```
+
+*In 2002, which states were observed at 7 or more locations? What about in 2010?*
+
+```{r}
+brfss_location_2002 = brfss_smart2010_data %>%
+  filter(year == 2002) %>%
+  group_by(locationabbr) %>%
+  summarise(
+  n_locations = n_distinct(locationdesc))
+
+brfss_location_2010 = brfss_smart2010_data %>%
+  filter(year == 2010) %>%
+  group_by(locationabbr) %>%
+  summarise(
+  n_locations = n_distinct(locationdesc))
+```
+
+In 2002, the states of CT, FL, NC, MA, NJ, & PA were observed at 7 or more locations. In 2010, the states of CO, PA, SC, OH, MA, NY, NE, WA, CA, MD, NC, TX, NJ, FL were observed at 7 or more locations.
+
+*Construct a dataset that is limited to Excellent responses, and contains, year, state, and a variable that averages the data_value across locations within a state. Make a “spaghetti” plot of this average value over time within a state (that is, make a plot showing a line for each state across years – the geom_line geometry and group aesthetic will help).*
+
+```{r}
+excellent_responses_brfss = brfss_smart2010_data %>%
+  filter(response == "Excellent") %>%
+  rename(State = locationabbr) %>%
+  group_by(State, year) %>%
+  mutate(data_value_ave_state = mean(data_value)) %>%
+  select(year, State, data_value_ave_state) %>%
+  drop_na()
+
+ggplot(excellent_responses_brfss, aes(x = year, y = data_value_ave_state, color = State)) +
+    geom_smooth(se = FALSE) +
+    labs(
+      title = "Average Data Value Over Time",
+      x = "Year",
+      y = "Average Data Value",
+      caption = "Data from BRFSS"
+    )
+```
+
+*Make a two-panel plot showing, for the years 2006, and 2010, distribution of data_value for responses (“Poor” to “Excellent”) among locations in NY State.*
+
+```{r}
+data_value_response_brfss = brfss_smart2010_data %>%
+  filter(year == 2006 | year == 2010) %>%
+  filter(locationabbr == "NY")
+
+ggplot(data_value_response_brfss, aes(x = response_factor_ordered, y = data_value)) + 
+  geom_boxplot() +
+  facet_grid(. ~ year) +
+  labs(
+      title = "Distribution of Data Value By Response - Box Plot",
+      x = "Response",
+      y = "Data Values",
+      caption = "Data from BRFSS"
+  )
+
+ggplot(data_value_response_brfss, aes(x = response_factor_ordered, y = data_value)) + 
+  geom_violin(aes(fill = response_factor_ordered), color = "blue", alpha = .5) + 
+  stat_summary(fun.y = median, geom = "point", color = "blue", size = 4) +
+  labs(
+      title = "Distribution of Data Value By Response - Violin Plot",
+      x = "Response",
+      y = "Data Values",
+      caption = "Data from BRFSS"
+  )
+```

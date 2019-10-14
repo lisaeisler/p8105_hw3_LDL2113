@@ -235,6 +235,8 @@ The data set contains `r nrow(accel_data_tidy)` observations. This is the expect
 
 *Using your tidied dataset, aggregate across minutes to create a total activity variable for each day, and create a table showing these totals. Are any trends apparent?*
 
+Please note: unclear whether instructions are to aggregate data for each day of week across five weeks. The code below interprets day as unique day of study (35 total days).
+
 ```{r}
 activity_total_table = accel_data_tidy %>% 
   group_by(week, day_ordered) %>% 

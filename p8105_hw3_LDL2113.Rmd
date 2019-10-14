@@ -1,14 +1,13 @@
 ---
 title: "Homework 3"
 author: "Lisa Eisler"
-date: "10/8/2019"
+date: "10/14/2019"
 output: github_document
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
-library(ggridges)
 
 knitr::opts_chunk$set(
   fig.width = 6,
@@ -121,7 +120,7 @@ data("brfss_smart2010")
 *First, do some data cleaning*
 
 ```{r}
-brfss_smart2010_data = brfss_smart2010 %>% 
+brfss_smart2010_data = brfss_smart2010 %>%
   janitor::clean_names() %>% 
   filter(topic == "Overall Health") %>%
   filter(response == "Poor" | response == "Fair" | response == "Good" | response == "Very good" | response == "Excellent") %>%
@@ -139,11 +138,16 @@ brfss_location_2002 = brfss_smart2010_data %>%
   summarise(
   n_locations = n_distinct(locationdesc))
 
+knitr::kable(brfss_location_2002, caption = 'Number of Distinct Locations By State, 2002')
+
 brfss_location_2010 = brfss_smart2010_data %>%
   filter(year == 2010) %>%
   group_by(locationabbr) %>%
   summarise(
   n_locations = n_distinct(locationdesc))
+
+knitr::kable(brfss_location_2010, caption = 'Number of Distinct Locations By State, 2010')
+
 ```
 
 In 2002, the states of CT, FL, NC, MA, NJ, & PA were observed at 7 or more locations. In 2010, the states of CO, PA, SC, OH, MA, NY, NE, WA, CA, MD, NC, TX, NJ, FL were observed at 7 or more locations.
@@ -160,7 +164,8 @@ excellent_responses_brfss = brfss_smart2010_data %>%
   drop_na()
 
 ggplot(excellent_responses_brfss, aes(x = year, y = data_value_ave_state, color = State)) +
-    geom_smooth(se = FALSE) +
+    geom_point() +
+    geom_line() +
     labs(
       title = "Average Data Value Over Time",
       x = "Year",
@@ -196,3 +201,82 @@ ggplot(data_value_response_brfss, aes(x = response_factor_ordered, y = data_valu
       caption = "Data from BRFSS"
   )
 ```
+
+
+## Problem 3
+
+*Load accelerometer data: This data set has 5 weeks worth of accelerometer data from a 63 year old man with congestive heart failure admitted to CUMC.*
+
+```{r}
+accel_data = read_csv("./accel_data.csv") %>% 
+  janitor:: clean_names()
+```
+
+*Tidy data to create a data set consisting of the following variables: week (1-5), day_of_week (Sunday - Saturday, as ordered variable), day_type (weekday or weekend), hour_of_day (0-23), minute_of_day (1-1440), and activity_count, which counts the activities that occured during a particular minute.*
+
+```{r}
+accel_data_tidy = accel_data %>%
+  pivot_longer(
+  activity_1:activity_1440, 
+  names_to = "minute", 
+  names_prefix = "activity_", 
+  values_to = "activity_count") %>% 
+  mutate(
+  day_type = ifelse(day %in% c("Saturday", "Sunday"), "weekend", "weekday"),
+  day_ordered = factor(day, ordered = TRUE, levels = c("Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday")),
+  minute_of_day = as.numeric(minute),
+  hour_of_day = as.integer(minute_of_day/60),
+  unique_day = paste(week, day_ordered)
+  ) %>%
+  select("week", "day_ordered", "unique_day", "day_type", "minute_of_day", "hour_of_day", "activity_count") %>%
+  arrange(week, day_ordered)
+```
+
+The data set contains `r nrow(accel_data_tidy)'. This is the expected number of minutes in a 5 week period of time.  
+
+*Using your tidied dataset, aggregate across minutes to create a total activity variable for each day, and create a table showing these totals. Are any trends apparent?*
+
+```{r}
+activity_total_table = accel_data_tidy %>% 
+  group_by(week, day_ordered) %>% 
+  summarize(total_activity_day = sum(activity_count)) %>%
+  select(week, day_ordered, total_activity_day)
+
+knitr::kable(activity_total_table, caption = 'Daily Total Activity for Patient')
+
+ggplot(activity_total_table, aes(x = day_ordered, y = total_activity_day)) +
+  geom_point() +
+  facet_grid(. ~ week) +
+  labs(
+    title = "Daily Total Activity for Patient, Weeks 1-5",
+    x = "Day of Week",
+    y = "Total Activity",
+    caption = "Accelerometer Data"
+  )
+```
+ 
+*I do not observe any clear patterns across the five weeks as illustrated by the 5 panel plot. It appears for weeks 1, 2, and 5 that activity level increases from Monday to Friday, with an unpredictable level of activity over the weekend. Weeks 3 and 4 do not display this pattern.*
+
+
+*Accelerometer data allows the inspection activity over the course of the day. Make a single-panel plot that shows the 24-hour activity time courses for each day and use color to indicate day of the week. Describe in words any patterns or conclusions you can make based on this graph.*
+
+Please note: Unable to make a readable single-panel plot which contains 24hr activity for each unique day of the study. Therefore, I'm assuming question is looking for hourly data aggregated across days of the week (5 weeks worth of Sunday data, 5 weeks worth of Monday data, etc). 
+
+```{r}
+time_course_24hr_plot = accel_data_tidy %>%
+  group_by(day_ordered, hour_of_day) %>% 
+  summarize(total_activity_hour = sum(activity_count)) %>%
+  select(day_ordered, hour_of_day, total_activity_hour) %>%
+  arrange(day_ordered, hour_of_day)
+  
+ggplot(time_course_24hr_plot, aes(x = hour_of_day, y = total_activity_hour, color = day_ordered)) + 
+  geom_line() + 
+  labs(
+    title = "Activity Counts Over 24 Hour Period, by Day of Week",
+    x = "Hour of Day",
+    y = "Activity Count",
+    caption = "Accelerometer Data"
+   )
+```
+
+Activity falls after hour 20 (8pm) and is almost zero until hour 5 (5am), reflecting a period of overnight sleep. Activity levels are fairly consistent from one day to the next during the afternoon hours. A variable spike in activity level is observed at roughly hours 8-9 (8-9am) and hours 19 (7pm) perhaps reflecting morning and evening activity such as working with therapy personnel (likely am) and perhaps hygiene or other activities (pm).
